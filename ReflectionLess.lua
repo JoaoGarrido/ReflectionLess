@@ -1,8 +1,10 @@
--- title:  game title
--- author: game developer
--- desc:   short description
+-- title:  ReflectionLess
+-- author: Pint8
+-- desc:	You lost your reflction
+-- desc:	You need to go to top of the
+-- desc:	Turret and defeat enemies
+-- desc:	To have your reflection back
 -- script: lua
-
  
 	
 --Variaveis globais
