@@ -413,10 +413,12 @@ function musicByLevel()
 			music(2,0,0,true)
 		elseif Level.LevelNumber == 8 then
 			music(7,0,0,true)
-		else end return
+		else return 
+		end 
 	end
 end
 
+--Pode ser ativado em Engine:onCicleEnd()
 function debug()
 	--Debug das funções ground 
 	print("up = ", 0, 0)
@@ -427,6 +429,7 @@ function debug()
 	print(leftBlocked(Player.x, Player.y),20,12)
 	print("rg = ", 0, 18)
 	print(rightBlocked(Player.x, Player.y),20,18)
+
 	--Debug da posição do jogador
 	print("Player.x: ",140,0)
 	print(Player.x,190,0)
