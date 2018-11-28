@@ -6,7 +6,11 @@
 -- desc:	To have your reflection back
 -- script: lua
  
-	
+--Level Order:
+--Lvl0N->Lvl1N->Lvl1R->Lvl2R->Lvl2N->Lvl3N->Lvl3R->Lvl3N->Lvl4N->Lvl4R->Lvl5R->Lvl5N->Lvl5R->
+--Lvl6R->Lvl6N->Lvl7N->Lvl7R->Lvl8R->Lvl8N(???)->Lvl9N->Lvl9R(VICTORY)
+--In case you die->Lvl0R(GAME OVER)
+
 --Variaveis globais
 t=0
 timerTotal = 0
@@ -17,18 +21,25 @@ BCLenabled = false
 BCRenabled = false
 BCLstate = 0
 BCRstate = 0
--- Pallette {r, g ,b}
-colorOffset = {{-0xB6, -0x14, 0x08}, {-0x1D, -0X1D, 0X04}, {-0XAE, -0X24, 0X72}, {-0X1C, -0X28, 0X9E}, {0X00, -0X5D, 0X40}, {-0X71, -0X30, 0X10}}
 
 --Variaveis de debug
 change = 0
 var = 0
+
+-- Pallette {r, g ,b}
+colorOffset = {{-0xB6, -0x14, 0x08}, {-0x1D, -0X1D, 0X04}, {-0XAE, -0X24, 0X72}, {-0X1C, -0X28, 0X9E}, {0X00, -0X5D, 0X40}, {-0X71, -0X30, 0X10}}
+
+--Tile
+-- TypeTile={startTypeTile, endTypeTile}
+tile = {SolidTile={}, DoorTile={}, MirrorTile={}, DeathTile={}, LeverTile={}, DiamondTile={}}
+
+
 --Classes do jogo
 Level = {LevelNumber = 0, reflected = 0, origX = 8, origY = 96, LevelNumber_Previous=-1}
 Player = {x = 8, y = 104 , vox=0.65, voy=1, vyMax=4, ay=13,  v_salto=-7, vy=0,
-		  STAND=256,WALK=258,JUMP=260,WIN=262,spid=256,reflected=0} 
+		  sprIDstand=256,sprIDwalk=258,sprIDjump=260,sprIDwin=262,sprIDfire=264,sprID = 256,flip=0} 
 				--colisionStartX = 4, colisionEndX = 6, colisionStartY = 5, colisionEndY = 8,}
-Yoda = {id1 = 306, id2=308, x = 150, y = 88, xPosMinInteragir = 115, xPosMaxInteragir = 170, drew = 1, flag = 1, msgSize = 7,
+Yoda = {sprID1 = 306, sprID2=308, x = 150, y = 88, xPosMinInteragir = 115, xPosMaxInteragir = 170, drew = 1, flag = 1, msgSize = 7,
 msg={"Hello young Anakin,",
 "this is the reflection tower.",
 "Inside you must go through the", 
@@ -37,8 +48,8 @@ msg={"Hello young Anakin,",
 "At the summit you will find the Devil!",
 "He has your reflection in a crystal",
 "Good Luck!"}}
-BossClawL = {x = 100, y = 0, xref = 0, yref = 0, vx = 0,  vy = 0,timer = 0, stateHand = 0, objX = 0, objY = 0,enabled = false}
-BossClawR = {x = 200, y = 0, xref = 200, yref = 0, vx = 0,  vy = 0,timer = 0, stateHand = 0, objX = 0, objY = 0,	enabled = false}
+BossClawL = {sprID = 377,x = 100, y = 0, xref = 0, yref = 0, vx = 0,  vy = 0,timer = 0, stateHand = 0, objX = 0, objY = 0,enabled = false}
+BossClawR = {sprID = 377,x = 200, y = 0, xref = 200, yref = 0, vx = 0,  vy = 0,timer = 0, stateHand = 0, objX = 0, objY = 0,	enabled = false}
 Boss = {headX = 116, headY = 64, enabled = false}
 
 
@@ -190,6 +201,7 @@ function Player.interaction()
 						poke(0x3fc0 + (i*3 + 2), peek(0x3fc0 + (i*3) + 2) - colorOffset[i][3])
 					end 
 				end
+		--alavancas(principalmente 2ª e 3ª) não funcionam direito->penso que seja a parte em y do mget() que está errada->diamond deverá ter o mesmo problema!
 		elseif(isLeverTile(mget(Player.x//8 + (Level.LevelNumber%8)*30, Player.y//8 + 1 + (Level.LevelNumber//8) * 17)
 			or isLeverTile(mget(Player.x//8 + 1 + (Level.LevelNumber%8)*30, Player.y//8 + 1 + (Level.LevelNumber//8) * 17)) 
 			or isLeverTile(mget(Player.x//8 + 2 + (Level.LevelNumber%8)*30, Player.y//8 + 1 + (Level.LevelNumber//8) * 17)))) then
@@ -209,8 +221,8 @@ function Player.bounds()
 		Player.y=500
 		Level.LevelNumber=0
 		Level.reflected=1
-		elseif(Boss.enable == true) then 
-			if((checkBossDamage(BossClawL.x, BossClawL.y, Player.x, Player.y) and (BCLstate ~= 4))  or (checkBossDamage(BossClawR.x, BossClawR.y, Player.x, Player.y) and (BCLstate ~= 4))) then
+	elseif(Boss.enable == true) then 
+			if((checkBossDamage(BossClawL.x, BossClawL.y, Player.x, Player.y) and (BCLstate ~= 4))  or (checkBossDamage(BossClawR.x, BossClawR.y, Player.x, Player.y) and (BCRstate ~= 4))) then
 				Player.x=500
 				Player.y=500
 				Level.LevelNumber=0
@@ -228,39 +240,39 @@ end
 function BossClawL.update()
 	BossClawL.enabled = true
 	BossClawL.timer = BossClawL.timer + 1
-	   if((BossClawL.stateHand == 0) and BCLenabled) then
-		   BossClawL.stateHand = 1
-		   BossClawL.objX = Player.x
-		   BossClawL.objY = Player.y
-		   BossClawL.vx = (BossClawL.objX - BossClawL.x)/30
+	if((BossClawL.stateHand == 0) and BCLenabled) then
+		BossClawL.stateHand = 1
+		BossClawL.objX = Player.x
+		BossClawL.objY = Player.y
+		BossClawL.vx = (BossClawL.objX - BossClawL.x)/30
 		BossClawL.vy = (BossClawL.objY - BossClawL.y)/70
-	   elseif (BossClawL.stateHand == 1 and BossClawL.objX <= BossClawL.x) then --dirigir para o player x
-		   BossClawL.stateHand = 2
-	   elseif (BossClawL.stateHand == 2 and BossClawL.objY <= BossClawL.y) then --dirigir para o player y
-		   BossClawL.stateHand = 3
-		   BossClawL.timer = 0
-		   BossClawL.vy = 0
-		   BossClawL.vx = 0 
-	   elseif (BossClawL.stateHand == 3 and BossClawL.timer == 10) then --esperar
+	elseif (BossClawL.stateHand == 1 and BossClawL.objX <= BossClawL.x) then --dirigir para o player x
+		BossClawL.stateHand = 2
+	elseif (BossClawL.stateHand == 2 and BossClawL.objY <= BossClawL.y) then --dirigir para o player y
+		BossClawL.stateHand = 3
+		BossClawL.timer = 0
+		BossClawL.vy = 0
+		BossClawL.vx = 0 
+	elseif (BossClawL.stateHand == 3 and BossClawL.timer == 30) then --esperar
 		BossClawL.stateHand = 4
-		   BossClawL.objX = BossClawL.xref
-		   BossClawL.objY = BossClawL.yref
-		   BossClawL.vx = (BossClawL.objX - BossClawL.x)/10
-		   BossClawL.vy = (BossClawL.objY - BossClawL.y)/10
-	   elseif (BossClawL.stateHand == 4 and BossClawL.objX >= BossClawL.x and BossClawL.objY >= BossClawL.y) then --voltar
-		   BossClawL.stateHand = 0
-		   BCLenabled = false
-	   end
-		   BCLstate = BossClawL.stateHand
-	   if(BossClawL.stateHand == 1) then
-			BossClawL.x = BossClawL.x + BossClawL.vx
-	   elseif(BossClawL.stateHand == 2) then
-			BossClawL.y = BossClawL.y + BossClawL.vy
-	   elseif(BossClawL.stateHand == 4) then
-			BossClawL.y = BossClawL.y + BossClawL.vy
-			   BossClawL.x = BossClawL.x + BossClawL.vx
-	   end
-	   BCLstate = BossClawL.stateHand
+		BossClawL.objX = BossClawL.xref
+		BossClawL.objY = BossClawL.yref
+		BossClawL.vx = (BossClawL.objX - BossClawL.x)/10
+		BossClawL.vy = (BossClawL.objY - BossClawL.y)/10
+	elseif (BossClawL.stateHand == 4 and BossClawL.objX >= BossClawL.x and BossClawL.objY >= BossClawL.y) then --voltar
+		BossClawL.stateHand = 0
+		BCLenabled = false
+	end
+	BCLstate = BossClawL.stateHand
+	if(BossClawL.stateHand == 1) then
+		BossClawL.x = BossClawL.x + BossClawL.vx
+	elseif(BossClawL.stateHand == 2) then
+		BossClawL.y = BossClawL.y + BossClawL.vy
+	elseif(BossClawL.stateHand == 4) then
+		BossClawL.y = BossClawL.y + BossClawL.vy
+		BossClawL.x = BossClawL.x + BossClawL.vx
+	end
+	BCLstate = BossClawL.stateHand
 end
 
 function BossClawR.update()
@@ -271,7 +283,7 @@ function BossClawR.update()
 		BossClawR.objX = Player.x
 		BossClawR.objY = Player.y
 		BossClawR.vx = (BossClawR.objX - BossClawR.x)/30
-	BossClawR.vy = (BossClawR.objY - BossClawR.y)/70
+		BossClawR.vy = (BossClawR.objY - BossClawR.y)/70
 	elseif (BossClawR.stateHand == 1 and BossClawR.objX >= BossClawR.x) then --dirigir para o player x
 		BossClawR.stateHand = 2
 	elseif (BossClawR.stateHand == 2 and BossClawR.objY <= BossClawR.y) then --dirigir para o player y
@@ -280,7 +292,7 @@ function BossClawR.update()
 		BossClawR.vy = 0
 		BossClawR.vx = 0 
 	elseif (BossClawR.stateHand == 3 and BossClawR.timer == 10) then --esperar
-	BossClawR.stateHand = 4
+		BossClawR.stateHand = 4
 		BossClawR.objX = BossClawR.xref
 		BossClawR.objY = BossClawR.yref
 		BossClawR.vx = (BossClawR.objX - BossClawR.x)/10
@@ -296,18 +308,19 @@ function BossClawR.update()
 		BossClawR.y = BossClawR.y + BossClawR.vy
 	elseif(BossClawR.stateHand == 4) then
 		BossClawR.y = BossClawR.y + BossClawR.vy
-			BossClawR.x = BossClawR.x + BossClawR.vx
+		BossClawR.x = BossClawR.x + BossClawR.vx
 	end
+	BCRstate = BossClawR.stateHand
 end
    
 function Boss:update()
 	if Boss.enable then
 		if (not BCLenabled) and (not BCRenabled) then
 			if (Player.x <= 116) then
-			BCLenabled = true
+				BCLenabled = true
 				BCRenabled = false 
 			else
-			BCRenabled = true
+				BCRenabled = true
 				BCLenabled = false
 			end
 		elseif BCLenabled then BossClawL.update()
@@ -317,15 +330,13 @@ function Boss:update()
 end
 
 function BossClawL.draw()
-	local n = 377
-	if BCLstate == 0 or BCLstate == 1 then n = 453 end
-	spr(n, BossClawL.x, BossClawL.y, 2, 1, 1, 0 , 4, 4)
+	--if BCLstate == 0 or BCLstate == 1 then n = 453 end
+	spr(BossClawL.sprID, BossClawL.x, BossClawL.y, 2, 1, 1, 0 , 4, 4)
 end
    
 function BossClawR.draw()
-   local n = 377
-   if BCRstate == 0 or BCRstate == 1 then n = 453 end
-   spr(n, BossClawR.x, BossClawR.y, 2, 1, 0, 0 , 4, 4)
+   --if BCRstate == 0 or BCRstate == 1 then n = 453 end
+   spr(BossClawR.sprID, BossClawR.x, BossClawR.y, 2, 1, 0, 0 , 4, 4)
 end
 
 function Boss.draw()
@@ -340,30 +351,30 @@ function Player.draw()
 	i =(timerTotal%60//30*2)
 	if(not isGrounded(Player.x,Player.y)) then
 		if(btn(2)) then 
-			Player.reflected = 1
+			Player.flip = 1
 		elseif(btn(3))then
-			Player.reflected = 0
+			Player.flip = 0
 		end
-		spr(Player.JUMP, Player.x, Player.y,2,1,Player.reflected,0,2,2)
-		Player.spid=Player.JUMP 
+		spr(Player.sprIDjump, Player.x, Player.y,2,1,Player.flip,0,2,2)
+		Player.sprID=Player.sprIDjump 
 	elseif(btn(3)) then
-	 	spr(Player.WALK-i, Player.x, Player.y,2,1,0,0,2,2)
-		Player.reflected=0
-		Player.spid=Player.WALK-i
+	 	spr(Player.sprIDwalk-i, Player.x, Player.y,2,1,0,0,2,2)
+		Player.flip=0
+		Player.sprID=Player.sprIDwalk-i
 	elseif (btn(2)) then
-		spr(Player.WALK-i, Player.x, Player.y,2,1,1,0,2,2)
-		Player.reflected=1
-		Player.spid=Player.WALK-i
+		spr(Player.sprIDwalk-i, Player.x, Player.y,2,1,1,0,2,2)
+		Player.flip=1
+		Player.sprID=Player.sprIDwalk-i
 	else
-		Player.spid=Player.STAND
+		Player.sprID=Player.sprIDstand
 	end	
-	spr(Player.spid, Player.x, Player.y,2,1,Player.reflected,0,2,2)
+	spr(Player.sprID, Player.x, Player.y,2,1,Player.flip,0,2,2)
 end
 
 function Yoda.draw()
 	--desenhar Yoda
 	if Level.LevelNumber == 0 then
-		spr(Yoda.id1,Yoda.x, Yoda.y,0,2,0,0,2,2) end
+		spr(Yoda.sprID1,Yoda.x, Yoda.y,0,2,0,0,2,2) end
 	--escrever texto Yoda
 	if(Yoda.drew == 1) then
 		spr(85,0,42,-1,3,0,0,2,2)
