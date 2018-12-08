@@ -2,7 +2,7 @@
 -- author: Pint8
 -- desc:	You lost your reflction
 -- desc:	You need to go to top of the
--- desc:	Turret and defeat enemies
+-- desc:	Tower and defeat enemies
 -- desc:	To have your reflection back
 -- script: lua
  
@@ -12,6 +12,8 @@
 --In case you die->Lvl0R(GAME OVER)
 
 --Variaveis globais
+DEBUG = true
+UIENABLED = true
 t=0
 timerTotal = 0
 a = 1
@@ -35,7 +37,7 @@ tile = {SolidTile={}, DoorTile={}, MirrorTile={}, DeathTile={}, LeverTile={}, Di
 
 
 --Classes do jogo
-Level = {LevelNumber = 0, reflected = 0, origX = 8, origY = 96, LevelNumber_Previous=-1}
+Level = {LevelNumber = 1, reflected = 0, origX = 8, origY = 96, LevelNumber_Previous=-1}
 Player = {x = 8, y = 104 , vox=0.65, voy=1, vyMax=4, ay=13,  v_salto=-7, vy=0,
 		  sprIDstand=256,sprIDwalk=258,sprIDjump=260,sprIDwin=262,sprIDdab=264,sprIDfire = 266, sprID = 256, flip=0} 
 				--colisionStartX = 4, colisionEndX = 6, colisionStartY = 5, colisionEndY = 8,}
@@ -370,7 +372,9 @@ function Yoda.draw()
 	--desenhar Yoda
 	if Level.LevelNumber == 0 then
 		spr(Yoda.sprID1,Yoda.x, Yoda.y,0,2,0,0,2,2) end
-	--escrever texto Yoda
+end
+
+function Yoda.uidraw()
 	if(Yoda.drew == 1) then
 		spr(85,0,42,-1,3,0,0,2,2)
 		spr(87,46,42,-1,3,0,0,2,2)
@@ -426,28 +430,30 @@ end
 
 --Pode ser ativado em Engine:onCicleEnd()
 function debug()
-	--Debug das funções ground 
-	print("up = ", 0, 0)
-	print(isGrounded(Player.x, Player.y),20,0)
-	print("dw = ", 0, 6)
-	print(isRoofed(Player.x, Player.y),20,6)
-	print("lf = ", 0, 12)
-	print(leftBlocked(Player.x, Player.y),20,12)
-	print("rg = ", 0, 18)
-	print(rightBlocked(Player.x, Player.y),20,18)
+	if DEBUG then
+		--Debug das funções ground 
+		print("up = ", 0, 0)
+		print(isGrounded(Player.x, Player.y),20,0)
+		print("dw = ", 0, 6)
+		print(isRoofed(Player.x, Player.y),20,6)
+		print("lf = ", 0, 12)
+		print(leftBlocked(Player.x, Player.y),20,12)
+		print("rg = ", 0, 18)
+		print(rightBlocked(Player.x, Player.y),20,18)
 
-	--Debug da posição do jogador
-	print("Player.x: ",140,0)
-	print(Player.x,190,0)
-	print("Player.y: ",140,6)
-	print(Player.y,190,6)
-	--Debug do nível
-	print((Level.LevelNumber%8)*30, 84, 10)
-	print(Level.reflected*17, 84, 20)
+		--Debug da posição do jogador
+		print("Player.x: ",140,0)
+		print(Player.x,190,0)
+		print("Player.y: ",140,6)
+		print(Player.y,190,6)
+		--Debug do nível
+		print((Level.LevelNumber%8)*30, 84, 10)
+		print(Level.reflected*17, 84, 20)
 
-	--Debug general
-	print("change: ")
-	print((isDoorTile(mget(Player.x//8+1+(Level.LevelNumber%8)*30,Player.y//8)) and Player.x>=15) ==1, 0, 114)
+		--Debug general
+		print("change: ")
+		print((isDoorTile(mget(Player.x//8+1+(Level.LevelNumber%8)*30,Player.y//8)) and Player.x>=15) ==1, 0, 114)
+	end
 end
 
 function resetGame()
@@ -460,7 +466,7 @@ function resetGame()
 	end
 end
 
-Engine = {_init = {}, _update = {Boss.update, Player.move,Player.bounds, Player.interaction, musicByLevel }, _draw = {Yoda.draw, Boss.draw, Player.draw}, larr = false, rarr = false, uparr = false, dnarr = false, }
+Engine = {_init = {}, _update = {Boss.update, Player.move, Player.bounds, Player.interaction, musicByLevel }, _draw = {Yoda.draw, Boss.draw, Player.draw}, _uidraw = {Yoda.uidraw}}
 
 function Engine:init()
 	if self._init == nil then
@@ -481,19 +487,30 @@ end
 function Engine:draw()
 	cls(13)
 	map((Level.LevelNumber%8)*30,  Level.reflected*17 + Level.LevelNumber//8*34)
-	if(Level.LevelNumber == 0 and Level.reflected==1) then
-		print("Press z to start your journey again",22,10)
-	end
-	if(Level.LevelNumber == 0 and Level.reflected==0)then
-		print("Action",100,16,0)
-		print("Jump",56,16,0)
-		print("Move",8,16,0)
-	end
-	if Engine._draw == nil then
+	if self._draw == nil then
 		return
 	end
-	for i=1,#Engine._draw do
-		Engine._draw[i]()
+	for i = 1, #self._draw do
+		self._draw[i]()
+	end
+end
+
+function Engine:uidraw()
+	if UIENABLED then
+		if(Level.LevelNumber == 0 and Level.reflected==1) then
+			print("Press z to start your journey again",22,10)
+		end
+		if(Level.LevelNumber == 0 and Level.reflected==0)then
+			print("Action",100,16,0)
+			print("Jump",56,16,0)
+			print("Move",8,16,0)
+		end
+		if self._uidraw == nil then
+			return
+		end
+		for i = 1, #self._uidraw do
+			self._uidraw[i]()
+		end
 	end
 end
 
@@ -509,7 +526,8 @@ function TIC()
 		Engine:init()
 	end	
 	Engine:update()
-	Engine.draw()
+	Engine:draw()
+	Engine:uidraw()
 	Engine:onCicleEnd()
 end
 
